@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        INSTALL_ML: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+      - model_cache:/app/model_cache
+    environment:
+      - SNAPCARD_DATABASE_URL=sqlite+aiosqlite:///./snapcard.db
+      - SNAPCARD_UPLOAD_DIR=uploads
+      - SNAPCARD_MODEL_CACHE_DIR=/app/model_cache
+      - SNAPCARD_DEVICE=cpu
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  model_cache:
