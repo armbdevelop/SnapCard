@@ -1,4 +1,10 @@
+import re
+
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+
+# Sentinel tokens that mT5 sometimes emits when confused by English prompts
+_EXTRA_ID_RE = re.compile(r"<extra_id_\d+>")
 
 
 class TextGenerator:
@@ -9,6 +15,12 @@ class TextGenerator:
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
         self.model.eval()
 
+    def _clean_output(self, text: str) -> str:
+        """Remove mT5 sentinel tokens and normalize whitespace."""
+        text = _EXTRA_ID_RE.sub("", text)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
+
     def _generate(self, prompt: str, max_length: int = 200) -> str:
         inputs = self.tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(self.device)
         outputs = self.model.generate(
@@ -18,23 +30,16 @@ class TextGenerator:
             early_stopping=True,
             no_repeat_ngram_size=3,
         )
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+        raw = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return self._clean_output(raw)
 
     def generate_title(self, caption: str, category: str) -> str:
-        """Generate a Russian product title."""
-        prompt = f"Generate Russian product title: {caption}, category: {category}"
-        result = self._generate(prompt, max_length=50)
-        if not result or len(result) < 3:
-            return self._fallback_title(caption, category)
-        return result
+        # Временно всегда используем fallback
+        return self._fallback_title(caption, category)
 
     def generate_description(self, caption: str, category: str, title: str) -> str:
-        """Generate a Russian product description."""
-        prompt = f"Generate Russian product description: {title}, {caption}, category: {category}"
-        result = self._generate(prompt, max_length=200)
-        if not result or len(result) < 10:
-            return self._fallback_description(caption, category)
-        return result
+        # Временно всегда используем fallback
+        return self._fallback_description(caption, category)
 
     def generate_characteristics(self, caption: str, category: str) -> dict[str, str]:
         """Generate product characteristics based on caption and category."""
@@ -58,10 +63,7 @@ class TextGenerator:
             "Автотовары": "Автотовар",
         }
         base = category_titles.get(category, "Товар")
-        if caption:
-            # Use first few words from caption
-            words = caption.split()[:4]
-            return f"{base} — {' '.join(words)}"
+
         return base
 
     def _fallback_description(self, caption: str, category: str) -> str:

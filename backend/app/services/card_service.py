@@ -35,6 +35,16 @@ class CardService:
         products = list(result.scalars().all())
         return products, total
 
+    async def list_all_products(
+        self, session: AsyncSession, category: str | None = None
+    ) -> list[Product]:
+        """Return all products, optionally filtered by category."""
+        stmt = select(Product).order_by(Product.created_at.desc())
+        if category:
+            stmt = stmt.where(Product.category == category)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
     async def update_product(
         self, session: AsyncSession, product_id: int, data: ProductUpdate
     ) -> Product | None:

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # ML
     device: str = "cpu"
     blip_model: str = "Salesforce/blip-image-captioning-large"
+    blip_lora_path: str | None = None
     clip_model: str = "openai/clip-vit-base-patch32"
     text_model: str = "google/mt5-base"
     text_model_fallback: str = "ai-forever/rugpt3small_based_on_gpt2"

@@ -24,7 +24,11 @@ class MLPipeline:
 
         try:
             from app.ml.image_captioner import ImageCaptioner
-            self._captioner = ImageCaptioner(model_name=settings.blip_model, device=device)
+            self._captioner = ImageCaptioner(
+                model_name=settings.blip_model,
+                device=device,
+                lora_path=settings.blip_lora_path,
+            )
             logger.info("BLIP captioner loaded")
         except Exception as e:
             logger.warning(f"Failed to load captioner: {e}")

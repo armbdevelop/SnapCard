@@ -110,3 +110,48 @@ async def test_invalid_file_type(client):
         files={"file": ("test.txt", b"not an image", "text/plain")},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_export_json(client):
+    # Create 2 cards
+    image_data = create_test_image()
+    await client.post("/api/v1/cards/generate", files={"file": ("a.jpg", image_data, "image/jpeg")})
+    await client.post("/api/v1/cards/generate", files={"file": ("b.jpg", image_data, "image/jpeg")})
+
+    response = await client.get("/api/v1/cards/export?format=json")
+    assert response.status_code == 200
+    assert "json" in response.headers["content-type"]
+    data = response.json()
+    assert len(data) == 2
+
+
+@pytest.mark.asyncio
+async def test_export_csv(client):
+    image_data = create_test_image()
+    await client.post("/api/v1/cards/generate", files={"file": ("a.jpg", image_data, "image/jpeg")})
+    await client.post("/api/v1/cards/generate", files={"file": ("b.jpg", image_data, "image/jpeg")})
+
+    response = await client.get("/api/v1/cards/export?format=csv")
+    assert response.status_code == 200
+    assert "csv" in response.headers["content-type"]
+    lines = response.text.strip().split("\n")
+    assert "id" in lines[0]  # header row
+    assert len(lines) == 3  # header + 2 data rows
+
+
+@pytest.mark.asyncio
+async def test_export_with_category_filter(client):
+    image_data = create_test_image()
+    # Create card and update category
+    r1 = await client.post("/api/v1/cards/generate", files={"file": ("a.jpg", image_data, "image/jpeg")})
+    await client.put(f"/api/v1/cards/{r1.json()['id']}", json={"category": "Электроника"})
+
+    r2 = await client.post("/api/v1/cards/generate", files={"file": ("b.jpg", image_data, "image/jpeg")})
+    await client.put(f"/api/v1/cards/{r2.json()['id']}", json={"category": "Одежда"})
+
+    response = await client.get("/api/v1/cards/export?format=json&category=Электроника")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["category"] == "Электроника"

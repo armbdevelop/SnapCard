@@ -90,6 +90,25 @@ Backend: http://localhost:8000
 | DELETE | /api/v1/cards/{id} | Delete card + image |
 | GET | /api/v1/health | Health + model status |
 
+## LoRA Fine-tuning
+
+SnapCard supports loading a LoRA adapter for BLIP to improve caption quality on product images.
+
+### How to use
+
+1. Place your trained LoRA adapter folder (containing `adapter_config.json` and `adapter_model.safetensors`) into `backend/model_cache/snapcard_lora/` (or any path you prefer).
+
+2. Set the environment variable:
+   ```bash
+   export SNAPCARD_BLIP_LORA_PATH=./model_cache/snapcard_lora
+   ```
+
+3. Start the backend as usual — the adapter will be loaded automatically on top of the base BLIP model.
+
+If the path is not set or the folder does not exist, the base BLIP model is used without any changes.
+
+See `training/README.md` for instructions on how to train your own LoRA adapter.
+
 ## Project Structure
 
 ```
