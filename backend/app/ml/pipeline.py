@@ -128,9 +128,14 @@ class MLPipeline:
             characteristics = {"Категория": category}
             title = f"Товар из категории «{category}»"
             if caption_ru:
-                description = f"Товар из категории «{category}». {caption_ru}"
+                description = (
+                    f"Представляем вашему вниманию товар из категории «{category}». "
+                    f"{caption_ru} "
+                    f"Превосходное качество по доступной цене. "
+                    f"Быстрая доставка и удобная оплата. Закажите прямо сейчас!"
+                )
             else:
-                description = f"Товар из категории «{category}». Высокое качество, доступная цена."
+                description = f"Отличный товар из категории «{category}». Высокое качество, доступная цена. Закажите прямо сейчас!"
 
         # Stage 4: SEO generation (rule-based)
         seo = {"seo_title": "", "seo_description": "", "seo_keywords": "", "seo_url": ""}

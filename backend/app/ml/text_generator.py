@@ -71,15 +71,15 @@ class TextGenerator:
         return base
 
     def _fallback_description(self, caption: str, category: str, caption_ru: str = "") -> str:
-        """Rule-based fallback description in Russian."""
-        parts = [f"Товар из категории «{category}»."]
+        """Marketing-style product description for e-commerce."""
         if caption_ru:
-            parts.append(caption_ru)
-        else:
-            parts.append("Высокое качество, доступная цена.")
-        result = " ".join(parts)
-        logger.info("_fallback_description called for category=%s, result=%r", category, result)
-        return result
+            return (
+                f"Представляем вашему вниманию товар из категории «{category}». "
+                f"{caption_ru} "
+                f"Превосходное качество по доступной цене. "
+                f"Быстрая доставка и удобная оплата. Закажите прямо сейчас!"
+            )
+        return f"Отличный товар из категории «{category}». Высокое качество, доступная цена. Закажите прямо сейчас!"
 
     def _infer_characteristics(self, caption: str, category: str) -> dict[str, str]:
         """Infer characteristics from caption and category."""
