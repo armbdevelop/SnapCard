@@ -1,20 +1,33 @@
 class SEOGenerator:
     """Rule-based SEO metadata generator."""
 
-    def generate(self, title: str, description: str, category: str, tags: list[str]) -> dict[str, str]:
+    def generate(
+        self,
+        title: str,
+        description: str,
+        category: str,
+        tags: list[str],
+        card_id: int | None = None,
+    ) -> dict[str, str]:
         """Generate SEO metadata.
 
+        Args:
+            card_id: Product card ID. If provided, the SEO URL will point to
+                     http://localhost:5173/cards/{card_id}.
+
         Returns:
-            Dict with seo_title, seo_description, seo_keywords
+            Dict with seo_title, seo_description, seo_keywords, seo_url
         """
         seo_title = self._make_seo_title(title, category)
         seo_description = self._make_seo_description(title, description)
         seo_keywords = self._make_keywords(title, category, tags)
+        seo_url = self._make_seo_url(card_id)
 
         return {
             "seo_title": seo_title,
             "seo_description": seo_description,
             "seo_keywords": seo_keywords,
+            "seo_url": seo_url,
         }
 
     def _make_seo_title(self, title: str, category: str) -> str:
@@ -68,3 +81,10 @@ class SEOGenerator:
                 keywords.append(kw)
 
         return ", ".join(keywords[:15])
+
+    def _make_seo_url(self, card_id: int | None) -> str:
+        """Create a real link to the card page in the app."""
+        base = "http://localhost:5173/cards"
+        if card_id is not None:
+            return f"{base}/{card_id}"
+        return base

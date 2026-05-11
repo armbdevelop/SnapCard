@@ -11,6 +11,7 @@ class ProductBase(BaseModel):
     seo_title: str = ""
     seo_description: str = ""
     seo_keywords: str = ""
+    seo_url: str = ""
 
 
 class ProductUpdate(BaseModel):
@@ -22,6 +23,8 @@ class ProductUpdate(BaseModel):
     seo_title: str | None = None
     seo_description: str | None = None
     seo_keywords: str | None = None
+    seo_url: str | None = None
+    caption_ru: str | None = None
 
 
 class ProductResponse(ProductBase):
@@ -29,6 +32,7 @@ class ProductResponse(ProductBase):
     image_path: str
     original_filename: str
     caption: str = ""
+    caption_ru: str = ""
     confidence_score: float = 0.0
     created_at: datetime
     updated_at: datetime

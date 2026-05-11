@@ -1,6 +1,9 @@
+import logging
 import re
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+logger = logging.getLogger(__name__)
 
 
 # Sentinel tokens that mT5 sometimes emits when confused by English prompts
@@ -37,9 +40,11 @@ class TextGenerator:
         # Временно всегда используем fallback
         return self._fallback_title(caption, category)
 
-    def generate_description(self, caption: str, category: str, title: str) -> str:
-        # Временно всегда используем fallback
-        return self._fallback_description(caption, category)
+    def generate_description(self, caption: str, category: str, title: str, caption_ru: str = "") -> str:
+        # Временно всегда используем fallback с переведённым caption
+        result = self._fallback_description(caption, category, caption_ru)
+        logger.info("_fallback_description returned: %r", result)
+        return result
 
     def generate_characteristics(self, caption: str, category: str) -> dict[str, str]:
         """Generate product characteristics based on caption and category."""
@@ -63,16 +68,18 @@ class TextGenerator:
             "Автотовары": "Автотовар",
         }
         base = category_titles.get(category, "Товар")
-
         return base
 
-    def _fallback_description(self, caption: str, category: str) -> str:
+    def _fallback_description(self, caption: str, category: str, caption_ru: str = "") -> str:
         """Rule-based fallback description in Russian."""
         parts = [f"Товар из категории «{category}»."]
-        if caption:
-            parts.append(f"На изображении: {caption}.")
-        parts.append("Высокое качество, доступная цена.")
-        return " ".join(parts)
+        if caption_ru:
+            parts.append(caption_ru)
+        else:
+            parts.append("Высокое качество, доступная цена.")
+        result = " ".join(parts)
+        logger.info("_fallback_description called for category=%s, result=%r", category, result)
+        return result
 
     def _infer_characteristics(self, caption: str, category: str) -> dict[str, str]:
         """Infer characteristics from caption and category."""
@@ -105,11 +112,31 @@ class TextGenerator:
                 chars["Материал"] = ru
                 break
 
-        # Category-specific defaults
+        # Brand detection (naive keyword matching from caption)
+        brand_map = {
+            "nike": "Nike", "adidas": "Adidas", "puma": "Puma",
+            "apple": "Apple", "samsung": "Samsung", "sony": "Sony",
+            "xiaomi": "Xiaomi", "lg": "LG", "philips": "Philips",
+            "bosch": "Bosch", "levi": "Levi's", "zara": "Zara",
+            "gucci": "Gucci", "prada": "Prada", "hugo": "Hugo Boss",
+        }
+        for en, brand in brand_map.items():
+            if en in caption_lower:
+                chars["Бренд"] = brand
+                break
+        if "Бренд" not in chars:
+            chars["Бренд"] = "Не указан"
+
+        # Country of origin (placeholder)
+        chars["Страна производства"] = "Уточняйте у продавца"
+
+        # Category-specific fields
         if category in ("Электроника", "Бытовая техника"):
             chars["Гарантия"] = "12 месяцев"
+            chars["Напряжение"] = "220 В"
         elif category in ("Одежда", "Обувь"):
             chars["Сезон"] = "Всесезонный"
+            chars["Размер"] = "Универсальный"
         elif category == "Продукты питания":
             chars["Срок хранения"] = "Смотрите на упаковке"
 

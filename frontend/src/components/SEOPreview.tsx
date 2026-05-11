@@ -2,19 +2,25 @@ interface Props {
   title: string;
   description: string;
   keywords: string;
+  url?: string;
 }
 
-export default function SEOPreview({ title, description, keywords }: Props) {
+export default function SEOPreview({ title, description, keywords, url }: Props) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">SEO превью</h3>
 
       {/* Google SERP mockup */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-1">
-        <p className="text-sm text-green-700 truncate">example.com/products/...</p>
-        <p className="text-xl text-blue-800 hover:underline cursor-pointer leading-tight">
+        <p className="text-sm text-green-700 truncate">{url || 'example.com/products/...'}</p>
+        <a
+          href={url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-xl text-blue-800 hover:underline leading-tight"
+        >
           {title || 'SEO заголовок не задан'}
-        </p>
+        </a>
         <p className="text-sm text-gray-600 line-clamp-2">
           {description || 'SEO описание не задано'}
         </p>

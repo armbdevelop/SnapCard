@@ -10,7 +10,9 @@ export interface Product {
   seo_title: string;
   seo_description: string;
   seo_keywords: string;
+  seo_url: string;
   caption: string;
+  caption_ru: string;
   confidence_score: number;
   created_at: string;
   updated_at: string;
@@ -33,6 +35,7 @@ export interface ProductUpdate {
   seo_title?: string;
   seo_description?: string;
   seo_keywords?: string;
+  seo_url?: string;
 }
 
 export interface HealthResponse {

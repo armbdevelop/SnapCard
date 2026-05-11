@@ -23,9 +23,11 @@ class Product(Base):
     seo_title: Mapped[str] = mapped_column(String(70), default="")
     seo_description: Mapped[str] = mapped_column(String(160), default="")
     seo_keywords: Mapped[str] = mapped_column(String(500), default="")
+    seo_url: Mapped[str] = mapped_column(String(255), default="")
 
     # ML metadata
     caption: Mapped[str] = mapped_column(Text, default="")
+    caption_ru: Mapped[str] = mapped_column(Text, default="")
     confidence_score: Mapped[float] = mapped_column(Float, default=0.0)
 
     # Timestamps

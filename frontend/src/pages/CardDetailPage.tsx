@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCard, useUpdateCard, useDeleteCard } from '../hooks/useCards';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SEOPreview from '../components/SEOPreview';
@@ -73,6 +73,12 @@ export default function CardDetailPage() {
             </>
           ) : (
             <>
+              <Link
+                to={`/demo-product/${product.id}`}
+                className="px-4 py-2 text-sm border border-green-300 text-green-700 rounded-lg hover:bg-green-50"
+              >
+                Демо-страница
+              </Link>
               <button
                 onClick={startEditing}
                 className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -102,7 +108,7 @@ export default function CardDetailPage() {
           </div>
           <div className="text-xs text-gray-400 space-y-1">
             <p>Файл: {product.original_filename}</p>
-            {product.caption && <p>Caption: {product.caption}</p>}
+            {product.caption_ru && <p>Описание фото: {product.caption_ru}</p>}
             {product.confidence_score > 0 && (
               <p>Уверенность: {Math.round(product.confidence_score * 100)}%</p>
             )}
@@ -214,6 +220,7 @@ export default function CardDetailPage() {
                 title={product.seo_title}
                 description={product.seo_description}
                 keywords={product.seo_keywords}
+                url={`http://localhost:5173/demo-product/${product.id}`}
               />
             )}
           </div>

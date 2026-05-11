@@ -52,6 +52,7 @@ async def generate_card(
             "characteristics": {},
             "tags": [],
             "caption": "",
+            "caption_ru": "",
             "confidence_score": 0.0,
             "seo_title": "",
             "seo_description": "",

@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import UploadPage from './pages/UploadPage';
 import CardsListPage from './pages/CardsListPage';
 import CardDetailPage from './pages/CardDetailPage';
+import DemoProductPage from './pages/DemoProductPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/" element={<UploadPage />} />
             <Route path="/cards" element={<CardsListPage />} />
             <Route path="/cards/:id" element={<CardDetailPage />} />
+            <Route path="/demo-product/:id" element={<DemoProductPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

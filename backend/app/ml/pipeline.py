@@ -22,6 +22,14 @@ class MLPipeline:
         self._seo_generator = SEOGenerator()
         logger.info("SEO generator loaded (rule-based)")
 
+        # Translator (optional)
+        try:
+            from app.ml.translator import EnRuTranslator
+            self._translator = EnRuTranslator(device=device)
+        except Exception as e:
+            logger.warning(f"Failed to load translator: {e}")
+            self._translator = None
+
         try:
             from app.ml.image_captioner import ImageCaptioner
             self._captioner = ImageCaptioner(
@@ -73,6 +81,7 @@ class MLPipeline:
         Pipeline: Image -> BLIP (caption) -> CLIP (category+tags) -> mT5 (title+description) -> Rules (SEO)
         """
         caption = ""
+        caption_ru = ""
         confidence = 0.0
         category = "Другое"
         tags: list[str] = []
@@ -85,6 +94,10 @@ class MLPipeline:
             try:
                 caption, confidence = self._captioner.caption(image_path)
                 logger.info(f"Caption: {caption} (confidence: {confidence:.2f})")
+                # Translate caption to Russian
+                if self._translator and caption:
+                    caption_ru = self._translator.translate(caption)
+                    logger.info(f"Caption RU: {caption_ru}")
             except Exception as e:
                 logger.error(f"Captioning failed: {e}")
 
@@ -101,27 +114,26 @@ class MLPipeline:
         if self._text_generator:
             try:
                 title = self._text_generator.generate_title(caption, category)
-                description = self._text_generator.generate_description(caption, category, title)
+                description = self._text_generator.generate_description(caption, category, title, caption_ru)
                 characteristics = self._text_generator.generate_characteristics(caption, category)
                 logger.info(f"Generated title: {title}")
             except Exception as e:
                 logger.error(f"Text generation failed: {e}")
                 # Use fallback
                 title = self._text_generator._fallback_title(caption, category)
-                description = self._text_generator._fallback_description(caption, category)
+                description = self._text_generator._fallback_description(caption, category, caption_ru)
                 characteristics = self._text_generator._infer_characteristics(caption, category)
         else:
-            # No text generator — use rule-based fallbacks
+            # No text generator — use rule-based fallbacks (no English caption)
             characteristics = {"Категория": category}
-            if caption:
-                title = f"Товар — {caption[:50]}"
-                description = f"Товар из категории «{category}». На изображении: {caption}."
+            title = f"Товар из категории «{category}»"
+            if caption_ru:
+                description = f"Товар из категории «{category}». {caption_ru}"
             else:
-                title = f"Товар из категории «{category}»"
-                description = f"Товар из категории «{category}». Высокое качество."
+                description = f"Товар из категории «{category}». Высокое качество, доступная цена."
 
         # Stage 4: SEO generation (rule-based)
-        seo = {"seo_title": "", "seo_description": "", "seo_keywords": ""}
+        seo = {"seo_title": "", "seo_description": "", "seo_keywords": "", "seo_url": ""}
         if self._seo_generator:
             try:
                 seo = self._seo_generator.generate(title, description, category, tags)
@@ -135,6 +147,7 @@ class MLPipeline:
             "characteristics": characteristics,
             "tags": tags,
             "caption": caption,
+            "caption_ru": caption_ru,
             "confidence_score": round(confidence, 3),
             **seo,
         }
