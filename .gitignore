@@ -44,8 +44,19 @@ frontend/node_modules/
 .DS_Store
 Thumbs.db
 
-# OMC
+# OMC / Claude / IDE caches
 .omc/
+backend/.omc/
+.claude/
+
+# Test caches
+backend/.pytest_cache/
+
+# Python package build artifacts
+backend/snapcard_backend.egg-info/
+
+# DB backups
 training/data/images
 backend/uploads
 *.db.*
+backend/test.db.*
