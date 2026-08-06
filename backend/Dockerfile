@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir \
 ARG INSTALL_ML=false
 RUN if [ "$INSTALL_ML" = "true" ]; then \
     pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir transformers accelerate; \
+    pip install --no-cache-dir transformers accelerate peft; \
     fi
 
 # App code

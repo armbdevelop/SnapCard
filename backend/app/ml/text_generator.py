@@ -1,7 +1,10 @@
 import logging
 import re
+from pathlib import Path
+from typing import Optional
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from peft import PeftModel
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +17,37 @@ _CYRILLIC_RE = re.compile(r"[А-ЯЁа-яё]")
 
 
 class TextGenerator:
-    def __init__(self, model_name: str = "google/mt5-base", device: str = "cpu"):
+    def __init__(
+        self,
+        model_name: str = "google/mt5-base",
+        device: str = "cpu",
+        title_lora_path: Optional[Path] = None,
+        description_lora_path: Optional[Path] = None,
+    ):
         self.device = device
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
-        self.model.eval()
+        self.base_model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
+        self.base_model.eval()
+
+        self.title_model = self._load_adapter(self.base_model, title_lora_path)
+        self.description_model = self._load_adapter(self.base_model, description_lora_path)
+
+    def _load_adapter(
+        self, base_model, adapter_path: Optional[Path]
+    ) -> Optional[PeftModel]:
+        if not adapter_path or not Path(adapter_path).exists():
+            logger.warning(f"mT5 adapter not found at {adapter_path}, generation will use fallback")
+            return None
+
+        try:
+            model = PeftModel.from_pretrained(base_model, str(adapter_path))
+            model.eval()
+            logger.info(f"Loaded mT5 adapter from {adapter_path}")
+            return model
+        except Exception as e:
+            logger.warning(f"Failed to load mT5 adapter {adapter_path}: {e}")
+            return None
 
     def _clean_output(self, text: str) -> str:
         """Remove mT5 sentinel tokens and normalize whitespace."""
@@ -31,9 +59,11 @@ class TextGenerator:
         """Heuristic check that generated text contains Cyrillic characters."""
         return bool(_CYRILLIC_RE.search(text))
 
-    def _generate(self, prompt: str, max_length: int = 200) -> str:
-        inputs = self.tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(self.device)
-        outputs = self.model.generate(
+    def _generate(self, model, prompt: str, max_length: int = 200) -> str:
+        inputs = self.tokenizer(
+            prompt, return_tensors="pt", max_length=512, truncation=True
+        ).to(self.device)
+        outputs = model.generate(
             **inputs,
             max_new_tokens=max_length,
             num_beams=4,
@@ -44,9 +74,12 @@ class TextGenerator:
         return self._clean_output(raw)
 
     def generate_title(self, caption: str, category: str, caption_ru: str = "") -> str:
-        """Generate a Russian product title using mT5, fallback to rule-based if needed."""
+        """Generate a Russian product title using mT5 LoRA, fallback to rule-based if needed."""
         source = caption_ru.strip() if caption_ru else caption
         if not source:
+            return self._fallback_title(caption, category)
+
+        if self.title_model is None:
             return self._fallback_title(caption, category)
 
         prompt = (
@@ -56,10 +89,10 @@ class TextGenerator:
         )
 
         try:
-            title = self._generate(prompt, max_length=60)
+            title = self._generate(self.title_model, prompt, max_length=64)
             if title and self._is_russian(title):
                 return title
-            logger.warning("mT5 title is empty or not Russian, using fallback")
+            logger.warning("mT5 title adapter returned empty or non-Russian text, using fallback")
         except Exception as e:
             logger.error(f"mT5 title generation failed: {e}")
 
@@ -68,9 +101,12 @@ class TextGenerator:
     def generate_description(
         self, caption: str, category: str, title: str, caption_ru: str = ""
     ) -> str:
-        """Generate a Russian product description using mT5, fallback to rule-based if needed."""
+        """Generate a Russian product description using mT5 LoRA, fallback to rule-based if needed."""
         source = caption_ru.strip() if caption_ru else caption
         if not source:
+            return self._fallback_description(caption, category, caption_ru)
+
+        if self.description_model is None:
             return self._fallback_description(caption, category, caption_ru)
 
         prompt = (
@@ -80,10 +116,10 @@ class TextGenerator:
         )
 
         try:
-            description = self._generate(prompt, max_length=200)
+            description = self._generate(self.description_model, prompt, max_length=200)
             if description and self._is_russian(description):
                 return description
-            logger.warning("mT5 description is empty or not Russian, using fallback")
+            logger.warning("mT5 description adapter returned empty or non-Russian text, using fallback")
         except Exception as e:
             logger.error(f"mT5 description generation failed: {e}")
 
@@ -113,7 +149,9 @@ class TextGenerator:
         base = category_titles.get(category, "Товар")
         return base
 
-    def _fallback_description(self, caption: str, category: str, caption_ru: str = "") -> str:
+    def _fallback_description(
+        self, caption: str, category: str, caption_ru: str = ""
+    ) -> str:
         """Marketing-style product description for e-commerce."""
         if caption_ru:
             return (

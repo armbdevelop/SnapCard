@@ -119,7 +119,7 @@ Rule-based SEO
 | Captioning | BLIP + LoRA | Описание изображения на английском |
 | Перевод | Helsinki-NLP/opus-mt-en-ru | Перевод caption на русский |
 | Классификация | CLIP | Zero-shot категория и теги |
-| Генерация текста | mT5 | Русский заголовок, описание, характеристики |
+| Генерация текста | mT5 + LoRA | Русский заголовок, описание |
 | SEO | Rule-based | SEO-метаданные |
 
 ### LoRA Fine-tuning
@@ -130,6 +130,39 @@ Rule-based SEO
 - Target modules: `query`, `value`
 - Trainable parameters: ~0.5% от базовой модели
 - Размер адаптера: ~50 МБ
+
+### mT5 LoRA Fine-Tuning
+
+Для генерации русских заголовков и описаний `google/mt5-base` дообучается через LoRA на синтетических карточках от Gemini Flash (~580 записей в train):
+
+- Два отдельных адаптера: `snapcard_mt5_title_lora` и `snapcard_mt5_description_lora`.
+- `r = 16`, `lora_alpha = 32`, `dropout = 0.1`
+- Target modules: `q`, `v`
+- Trainable parameters: ~0.3% от базовой модели
+- Размер каждого адаптера: ~10–20 МБ
+
+#### Как обучить
+
+1. Подготовить датасеты:
+   ```bash
+   cd training
+   python prepare_mt5_dataset.py
+   ```
+2. Открыть `training/train_mt5_lora.ipynb` в Google Colab (GPU runtime).
+3. Загрузить 4 JSONL-файла из `training/data/` в Google Drive.
+4. Запустить все ячейки — получить два адаптера в Drive.
+5. Скопировать адаптеры в проект:
+   ```
+   backend/model_cache/
+   ├── snapcard_mt5_title_lora/
+   └── snapcard_mt5_description_lora/
+   ```
+6. Оценить качество:
+   ```bash
+   python training/evaluate_mt5.py \
+     backend/model_cache/snapcard_mt5_title_lora \
+     backend/model_cache/snapcard_mt5_description_lora
+   ```
 
 ---
 
@@ -296,7 +329,7 @@ SnapCard/
 - [x] ML-пайплайн BLIP → CLIP → mT5 → SEO
 - [x] LoRA-дообучение BLIP на fashion-датасете
 - [x] Docker и docker-compose
-- [x] Полноценная генерация текста через mT5 с русскими промптами
+- [x] Полноценная генерация текста через mT5 с LoRA-адаптерами
 - [ ] Поддержка пакетной загрузки нескольких изображений
 - [ ] Интеграция с популярными CMS маркетплейсов
 - [ ] PostgreSQL вместо SQLite для продакшена

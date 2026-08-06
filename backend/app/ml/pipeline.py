@@ -50,19 +50,16 @@ class MLPipeline:
 
         try:
             from app.ml.text_generator import TextGenerator
-            self._text_generator = TextGenerator(model_name=settings.text_model, device=device)
+            self._text_generator = TextGenerator(
+                model_name=settings.text_model,
+                device=device,
+                title_lora_path=settings.mt5_title_lora_path,
+                description_lora_path=settings.mt5_description_lora_path,
+            )
             logger.info("Text generator loaded")
         except Exception as e:
             logger.warning(f"Failed to load text generator: {e}")
-            # Try fallback model
-            try:
-                from app.ml.text_generator import TextGenerator
-                self._text_generator = TextGenerator(
-                    model_name=settings.text_model_fallback, device=device
-                )
-                logger.info("Fallback text generator loaded")
-            except Exception as e2:
-                logger.warning(f"Failed to load fallback text generator: {e2}")
+            self._text_generator = None
 
         self.is_loaded = self._captioner is not None or self._classifier is not None
         logger.info(f"ML Pipeline loaded. Status: {self.get_status()}")
