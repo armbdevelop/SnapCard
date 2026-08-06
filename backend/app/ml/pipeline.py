@@ -113,7 +113,7 @@ class MLPipeline:
         # Stage 3: Text generation (mT5 / rugpt3)
         if self._text_generator:
             try:
-                title = self._text_generator.generate_title(caption, category)
+                title = self._text_generator.generate_title(caption, category, caption_ru)
                 description = self._text_generator.generate_description(caption, category, title, caption_ru)
                 characteristics = self._text_generator.generate_characteristics(caption, category)
                 logger.info(f"Generated title: {title}")

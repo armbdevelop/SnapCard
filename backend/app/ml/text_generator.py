@@ -6,8 +6,11 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 logger = logging.getLogger(__name__)
 
 
-# Sentinel tokens that mT5 sometimes emits when confused by English prompts
+# Sentinel tokens that mT5 sometimes emits when confused
 _EXTRA_ID_RE = re.compile(r"<extra_id_\d+>")
+
+# Heuristic: if output contains mostly ASCII letters, it's likely English.
+_CYRILLIC_RE = re.compile(r"[А-ЯЁа-яё]")
 
 
 class TextGenerator:
@@ -24,6 +27,10 @@ class TextGenerator:
         text = re.sub(r"\s+", " ", text)
         return text.strip()
 
+    def _is_russian(self, text: str) -> bool:
+        """Heuristic check that generated text contains Cyrillic characters."""
+        return bool(_CYRILLIC_RE.search(text))
+
     def _generate(self, prompt: str, max_length: int = 200) -> str:
         inputs = self.tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True).to(self.device)
         outputs = self.model.generate(
@@ -36,15 +43,51 @@ class TextGenerator:
         raw = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return self._clean_output(raw)
 
-    def generate_title(self, caption: str, category: str) -> str:
-        # Временно всегда используем fallback
+    def generate_title(self, caption: str, category: str, caption_ru: str = "") -> str:
+        """Generate a Russian product title using mT5, fallback to rule-based if needed."""
+        source = caption_ru.strip() if caption_ru else caption
+        if not source:
+            return self._fallback_title(caption, category)
+
+        prompt = (
+            f"Напиши короткий русский заголовок товара для маркетплейса. "
+            f"Категория: {category}. Описание товара: {source}. "
+            f"Заголовок:"
+        )
+
+        try:
+            title = self._generate(prompt, max_length=60)
+            if title and self._is_russian(title):
+                return title
+            logger.warning("mT5 title is empty or not Russian, using fallback")
+        except Exception as e:
+            logger.error(f"mT5 title generation failed: {e}")
+
         return self._fallback_title(caption, category)
 
-    def generate_description(self, caption: str, category: str, title: str, caption_ru: str = "") -> str:
-        # Временно всегда используем fallback с переведённым caption
-        result = self._fallback_description(caption, category, caption_ru)
-        logger.info("_fallback_description returned: %r", result)
-        return result
+    def generate_description(
+        self, caption: str, category: str, title: str, caption_ru: str = ""
+    ) -> str:
+        """Generate a Russian product description using mT5, fallback to rule-based if needed."""
+        source = caption_ru.strip() if caption_ru else caption
+        if not source:
+            return self._fallback_description(caption, category, caption_ru)
+
+        prompt = (
+            f"Напиши продающее русское описание товара для интернет-магазина. "
+            f"Категория: {category}. Заголовок: {title}. Описание товара: {source}. "
+            f"Описание:"
+        )
+
+        try:
+            description = self._generate(prompt, max_length=200)
+            if description and self._is_russian(description):
+                return description
+            logger.warning("mT5 description is empty or not Russian, using fallback")
+        except Exception as e:
+            logger.error(f"mT5 description generation failed: {e}")
+
+        return self._fallback_description(caption, category, caption_ru)
 
     def generate_characteristics(self, caption: str, category: str) -> dict[str, str]:
         """Generate product characteristics based on caption and category."""
