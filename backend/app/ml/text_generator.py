@@ -27,20 +27,21 @@ class TextGenerator:
         self.device = device
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.base_model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
-        self.base_model.eval()
 
-        self.title_model = self._load_adapter(self.base_model, title_lora_path)
-        self.description_model = self._load_adapter(self.base_model, description_lora_path)
+        # Each adapter needs its own base model instance: wrapping the same
+        # base in two PeftModels makes the second adapter overwrite the first
+        # (both register as adapter "default" on the shared modules).
+        self.title_model = self._load_adapter(title_lora_path)
+        self.description_model = self._load_adapter(description_lora_path)
 
-    def _load_adapter(
-        self, base_model, adapter_path: Optional[Path]
-    ) -> Optional[PeftModel]:
+    def _load_adapter(self, adapter_path: Optional[Path]) -> Optional[PeftModel]:
         if not adapter_path or not Path(adapter_path).exists():
             logger.warning(f"mT5 adapter not found at {adapter_path}, generation will use fallback")
             return None
 
         try:
+            base_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name).to(self.device)
+            base_model.eval()
             model = PeftModel.from_pretrained(base_model, str(adapter_path))
             model.eval()
             logger.info(f"Loaded mT5 adapter from {adapter_path}")
@@ -82,11 +83,9 @@ class TextGenerator:
         if self.title_model is None:
             return self._fallback_title(caption, category)
 
-        prompt = (
-            f"Напиши короткий русский заголовок товара для маркетплейса. "
-            f"Категория: {category}. Описание товара: {source}. "
-            f"Заголовок:"
-        )
+        # Prompt must exactly match the training format (prepare_mt5_dataset.py),
+        # otherwise the LoRA adapter degenerates to echoing prompt fragments.
+        prompt = f"Заголовок товара: {source}. Категория: {category}."
 
         try:
             title = self._generate(self.title_model, prompt, max_length=64)
@@ -109,10 +108,10 @@ class TextGenerator:
         if self.description_model is None:
             return self._fallback_description(caption, category, caption_ru)
 
+        # Prompt must exactly match the training format (prepare_mt5_dataset.py).
         prompt = (
-            f"Напиши продающее русское описание товара для интернет-магазина. "
-            f"Категория: {category}. Заголовок: {title}. Описание товара: {source}. "
-            f"Описание:"
+            f"Описание товара: {source}. Категория: {category}. "
+            f"Заголовок: {title}."
         )
 
         try:
